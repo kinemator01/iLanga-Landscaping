@@ -1,0 +1,20 @@
+{
+  "name": "ilanga-landscaping",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "devStart": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0",
+    "ilanga-landscaping": "file:"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
