@@ -1,71 +1,136 @@
-const express = require('express');
-const nodemailer = require('nodemailer');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const path = require('path');
+// Import required modules
+const express = require('express'); // Express framework for server
+const nodemailer = require('nodemailer'); // Nodemailer for sending emails
+const cors = require('cors'); // CORS middleware to allow cross-origin requests
+const bodyParser = require('body-parser'); // Middleware to parse JSON request bodies
+const path = require('path'); // Path module for handling file paths
+const sqlite3 = require('sqlite3').verbose(); // SQLite3 for database
+require('dotenv').config(); // Load environment variables from .env file
 
 const app = express();
 const PORT = 3000;
 
+// Enable CORS for all routes
 app.use(cors());
+
+// Parse incoming JSON requests
 app.use(bodyParser.json());
-app.use(express.static(__dirname)); // Serve static files from current directory
 
-// NOTE: Replace 'your-email@gmail.com' and 'your-app-password' with valid Gmail credentials or use environment variables for security
+// Serve static files (HTML, CSS, JS) from the current directory
+app.use(express.static(__dirname));
 
-app.post('/contact', async (req, res) => {
-  const { name, email, message } = req.body;
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: 'your-email@gmail.com',
-      pass: 'your-app-password'
-    }
-  });
-
-  const mailOptions = {
-    from: email,
-    to: 'your-email@gmail.com',
-    subject: `Contact Form - ${name}`,
-    text: message
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    res.status(200).send('Email sent successfully');
-  } catch (error) {
-    console.error('Error sending mail:', error);
-    res.status(500).send('Failed to send email');
+// Set up SQLite database connection
+const db = new sqlite3.Database('./database.db', (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database.');
   }
 });
 
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+// Create tables if they don't exist
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-app.post('/booking', async (req, res) => {
-  const { name, email, phone, date, message } = req.body;
+  db.run(`CREATE TABLE IF NOT EXISTS bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    date TEXT,
+    message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+});
 
-  const transporter = nodemailer.createTransport({
+// Create a reusable transporter object using Gmail SMTP with environment variables
+function createTransporter() {
+  return nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'your-email@gmail.com',
-      pass: 'your-app-password'
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+}
+
+// Endpoint to handle contact form submissions
+app.post('/contact', async (req, res) => {
+  const { name, email, message } = req.body;
+
+  // Insert contact data into database
+  const insertContact = `INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)`;
+  db.run(insertContact, [name, email, message], function(err) {
+    if (err) {
+      console.error('Error inserting contact:', err.message);
+      res.status(500).send('Failed to save contact data');
+      return;
     }
   });
 
+  const transporter = createTransporter();
+
+  // Email options for the contact form message
   const mailOptions = {
-    from: email,
-    to: 'your-email@gmail.com',
-    subject: `Booking Request - ${name}`,
-    text: `Phone: ${phone}\nDate: ${date}\nMessage: ${message}`
+    from: email, // Sender address (user's email)
+    to: process.env.EMAIL_USER, // Receiver address (your email)
+    subject: `Contact Form - ${name}`, // Email subject with sender's name
+    text: message // Email body text
   };
 
   try {
+    // Send the email
+    await transporter.sendMail(mailOptions);
+    res.status(200).send('Email sent successfully');
+  } catch (error) {
+    // Log error and send failure response
+    console.error('Error sending mail:', error);
+    res.status(500).send('Please try again later!');
+  }
+});
+
+// Endpoint to handle booking form submissions
+app.post('/booking', async (req, res) => {
+  const { name, email, phone, date, message } = req.body;
+
+  // Insert booking data into database
+  const insertBooking = `INSERT INTO bookings (name, email, phone, date, message) VALUES (?, ?, ?, ?, ?)`;
+  db.run(insertBooking, [name, email, phone, date, message], function(err) {
+    if (err) {
+      console.error('Error inserting booking:', err.message);
+      res.status(500).send('Failed to save booking data');
+      return;
+    }
+  });
+
+  const transporter = createTransporter();
+
+  // Email options for the booking request
+  const mailOptions = {
+    from: email, // Sender address (user's email)
+    to: process.env.EMAIL_USER, // Receiver address (your email)
+    subject: `Booking Request - ${name}`, // Email subject with sender's name
+    text: `Phone: ${phone}\nDate: ${date}\nMessage: ${message}` // Email body text with booking details
+  };
+
+  try {
+    // Send the booking email
     await transporter.sendMail(mailOptions);
     res.status(200).send('Booking email sent successfully');
   } catch (error) {
+    // Log error and send failure response
     console.error('Error sending booking mail:', error);
     res.status(500).send('Failed to send booking email');
   }
 });
+
+// Start the server and listen on the specified port
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+
 console.log("h");
