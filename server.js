@@ -78,8 +78,9 @@ app.post('/contact', async (req, res) => {
 
   // Email options for the contact form message
   const mailOptions = {
-    from: email, // Sender address (user's email)
+    from: process.env.EMAIL_USER, // Sender address (your email)
     to: process.env.EMAIL_USER, // Receiver address (your email)
+    replyTo: email, // Reply to user's email
     subject: `Contact Form - ${name}`, // Email subject with sender's name
     text: message // Email body text
   };
@@ -113,8 +114,9 @@ app.post('/booking', async (req, res) => {
 
   // Email options for the booking request
   const mailOptions = {
-    from: email, // Sender address (user's email)
+    from: process.env.EMAIL_USER, // Sender address (your email)
     to: process.env.EMAIL_USER, // Receiver address (your email)
+    replyTo: email, // Reply to user's email
     subject: `Booking Request - ${name}`, // Email subject with sender's name
     text: `Phone: ${phone}\nDate: ${date}\nMessage: ${message}` // Email body text with booking details
   };
@@ -134,3 +136,4 @@ app.post('/booking', async (req, res) => {
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
 
 console.log("h");
+
