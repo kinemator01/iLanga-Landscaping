@@ -12,7 +12,8 @@
   "description": "",
   "dependencies": {
     "express": "^5.1.0",
-    "ilanga-landscaping": "file:"
+    "ilanga-landscaping": "file:",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
